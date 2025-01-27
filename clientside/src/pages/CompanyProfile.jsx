@@ -11,8 +11,6 @@ import { companies, jobs } from "../utils/data";
 import { CustomButton, JobCard, Loading, TextInput } from "../components/Index";
 
 
-import { set } from "mongoose";
-
 const CompanyForm = ({ open, setOpen }) => {
   const { user } = useSelector((state) => state.user);
   const {
