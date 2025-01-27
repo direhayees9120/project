@@ -5,9 +5,13 @@ import { useDispatch, useSelector } from "react-redux";
 import { HiLocationMarker } from "react-icons/hi";
 import { AiOutlineMail } from "react-icons/ai";
 import { FiPhoneCall, FiEdit3, FiUpload } from "react-icons/fi";
+import { handleFileUpload, apiRequest } from "../utils";
 import { Link, useParams } from "react-router-dom";
 import { companies, jobs } from "../utils/data";
 import { CustomButton, JobCard, Loading, TextInput } from "../components/Index";
+
+
+import { set } from "mongoose";
 
 const CompanyForm = ({ open, setOpen }) => {
   const { user } = useSelector((state) => state.user);
@@ -19,20 +23,55 @@ const CompanyForm = ({ open, setOpen }) => {
     formState: { errors },
   } = useForm({
     mode: "onChange",
-    defaultValues: { ...user?.user },
+    defaultValues: { ...user },
   });
 
   const dispatch = useDispatch();
   const [profileImage, setProfileImage] = useState("");
   const [uploadCv, setUploadCv] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [errMsg, setErrMsg] = useState({ status: false });
 
-  const onSubmit = () => {};
+  const onSubmit = async (data) => {
+    setIsLoading(true);
+    setErrMsg(null);
+
+    const uri = profileImage && ( await handleFileUpload(profileImage) );
+    const newData = uri ? {...data, profileUrl: uri} : data;
+
+    try {
+      const res = await apiRequest({
+         method: "PUT",
+         url: "/companies/update-company",
+         data: newData,
+         token: user?.token,
+       });
+       setIsLoading(false);
+       
+       if (res.status === "failed") {
+         setErrMsg({...res});
+       } else {
+         setErrMsg({ status:"success", message: res.message });
+         dispatch(login(data));
+         localStorage.setItem("userInfo", JSON.stringify(data));
+         
+         setTimeout(() => {
+           window.location.reload();
+         }, 1500);
+
+         }
+
+    } catch (error) {
+      console.log(error);
+      setIsLoading(false);
+    }
+  };
 
   const closeModal = () => setOpen(false);
 
   return (
     <>
-      <Transition appear show={opener ?? false} as={Fragment}>
+      <Transition appear show={open ?? false} as={Fragment}>
         <Dialog as='div' className='relative z-50' onClose={closeModal}>
           <Transition.Child
             as={Fragment}
@@ -163,8 +202,36 @@ const CompanyProfile = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [openForm, setOpenForm] = useState(false);
 
+
+  const fetchCompany = async () => {
+    setIsLoading(true);
+  
+    // Simplified ID assignment with fallback
+    const id = params?.id || user?._id;
+  
+    // Check if ID is valid
+    if (!id) {
+      console.error("Company ID is missing. Cannot fetch company details.");
+      setIsLoading(false);
+      return;
+    }
+  
+    try {
+      const res = await apiRequest({
+        url: `/companies/get-company/${id}`,
+        method: "GET",
+      });
+  
+      setInfo(res?.data);
+    } catch (error) {
+      console.error("Error fetching company details:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };  
+
   useEffect(() => {
-    setInfo(companies[parseInt(params?.id ?? 0) - 1]);
+    fetchCompany();
     window.scrollTo({ top: 0, left: 0, behavior: "smooth" });
   }, []);
 
@@ -181,8 +248,8 @@ const CompanyProfile = () => {
           </h2>
 
           {user?.user?.accountType === undefined &&
-            info?._id === user?.user?._id && (
-              <div className='flex items-center justifu-center py-5 md:py-0 gap-4'>
+            info?._id === user?._id && (
+              <div className='flex items-center justify-center py-5 md:py-0 gap-4'>
                 <CustomButton
                   onClick={() => setOpenForm(true)}
                   iconRight={<FiEdit3 />}

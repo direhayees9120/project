@@ -15,6 +15,7 @@ function MenuList({ user, onClick }) {
   const dispatch = useDispatch();
   const handleLogout = () => {
     dispatch(Logout());
+    // window.location.replace("/");
     localStorage.removeItem("userInfo");
   };
 
@@ -173,7 +174,7 @@ const Navbar = () => {
           <Link
             onClick={handleCloseNavbar}
             to={
-              user?.accountType === "seeker" ? "applly-gistory" : "upload-job"
+              user?.accountType === "seeker" ? "apply-gistory" : "upload-job"
             }
           >
             {user?.accountType === "seeker" ? "Applications" : "Upload Job"}
