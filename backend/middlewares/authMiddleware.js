@@ -14,22 +14,28 @@ const userAuth = async (req, res, next) => {
     // Verify the token and decode it
     const decoded = jwt.verify(token, process.env.JWT_SECRET_KEY);
 
-    // Try to find the user in both collections
-    const user = await Users.findById(decoded.userId);
-    const company = await Companies.findById(decoded.userId);
-
-    if (!user && !company) {
-      return res.status(404).json({ message: "User not found" });
+    // Check if the user is a company or a regular user
+    let entity;
+    if (decoded.role === 'user') {
+      // If it's a user, try to find it in the Users collection
+      entity = await Users.findById(decoded.userId);
+    } else if (decoded.role === 'company') {
+      // If it's a company, try to find it in the Companies collection
+      entity = await Companies.findById(decoded.userId);
     }
 
-    // Attach the user or company to the request
-    req.user = user || company;
+    if (!entity) {
+      return res.status(404).json({ message: "User or company not found" });
+    }
+
+    // Attach the found user or company to the request
+    req.user = entity;
 
     // Proceed to the next middleware/controller
     next();
   } catch (error) {
     console.log("Token verification error:", error);
-    res.status(401).json({ message: "Invalid or expired token" });
+    return res.status(401).json({ message: "Invalid or expired token" });
   }
 };
 
